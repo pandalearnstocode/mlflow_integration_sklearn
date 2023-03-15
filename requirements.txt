@@ -1,0 +1,8 @@
+ipython
+jupyter
+notebook
+scikit-learn
+pandas
+numpy
+statsmodels
+mlflow
