@@ -12,3 +12,4 @@ loguru
 black
 torch
 gretel-synthetics
+dill
