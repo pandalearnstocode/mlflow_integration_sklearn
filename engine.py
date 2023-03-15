@@ -44,7 +44,7 @@ class LassoRegressor(BaseEstimator, RegressorMixin):
 
 class HoltWintersAtomic(BaseEstimator, RegressorMixin):
     def __init__(
-        self, trend=None, damped_trend=False, seasonal=None, seasonal_periods=None, date_col = "date",date_freq = "D"
+        self, trend=None, damped_trend=False, seasonal=None, seasonal_periods=None, date_col = "date",date_freq = "D", target_col = "yt"
     ):
         self.trend = trend
         self.damped_trend = damped_trend
@@ -53,11 +53,12 @@ class HoltWintersAtomic(BaseEstimator, RegressorMixin):
         self.model_ = None
         self.date_col = date_col
         self.date_freq = date_freq
+        self.target_col = "yt"
 
     def fit(self, X, y=None):
         X = X.set_index(self.date_col)
         X.index.freq = self.date_freq
-        X = X[["yt"]]
+        X = X[[self.target_col]]
         self.model_ = ExponentialSmoothing(
             X,
             trend=self.trend,
@@ -75,12 +76,12 @@ class HoltWintersAtomic(BaseEstimator, RegressorMixin):
         return df
 
     def score(self, X, y):
-        pred_df = X[["date", "yt"]].merge(self.predict(X), on="date", how="left")
+        pred_df = X[[self.date_col, self.target_col]].merge(self.predict(X), on=self.date_col, how="left")
         return (
             np.mean(
                 np.abs(
-                    (pred_df["yt"].to_numpy() - pred_df["yt_hat"].to_numpy())
-                    / pred_df["yt"].to_numpy()
+                    (pred_df[self.target_col].to_numpy() - pred_df["yt_hat"].to_numpy())
+                    / pred_df[self.target_col].to_numpy()
                 )
             )
             * 100
@@ -95,6 +96,10 @@ class HoltWintersPooled(BaseEstimator, RegressorMixin):
         seasonal=None,
         seasonal_periods=None,
         n_jobs=1,
+        date_col = "date",
+        date_freq = "D",
+        target_col = "yt",
+        model_id_col = "model_id"
     ):
         self.trend = trend
         self.damped_trend = damped_trend
@@ -103,10 +108,14 @@ class HoltWintersPooled(BaseEstimator, RegressorMixin):
         self.models = {}
         self.training_model_ids_ = []
         self.n_jobs = n_jobs
+        self.date_col = date_col
+        self.date_freq = date_freq
+        self.target_col = target_col
+        self.model_id_col = model_id_col
 
     def _fit(self, data):
-        X_ = data[["date", "yt"]]
-        y_ = data[["date", "yt"]]
+        X_ = data[[self.date_col,self.target_col]]
+        y_ = data[[self.date_col, self.target_col]]
         inner_model = HoltWintersAtomic(
             trend=self.trend,
             damped_trend=self.damped_trend,
@@ -116,15 +125,15 @@ class HoltWintersPooled(BaseEstimator, RegressorMixin):
         return inner_model.fit(X_, y_)
 
     def fit(self, X, y):
-        self.training_model_ids = X["model_id"].unique().tolist()
+        self.training_model_ids = X[self.model_id_col].unique().tolist()
         if self.n_jobs == -1:
             self.models = Parallel(n_jobs=-1, verbose=1)(
-                delayed(self._fit)(data) for _, data in X.groupby("model_id")
+                delayed(self._fit)(data) for _, data in X.groupby(self.model_id_col)
             )
         else:
-            for model_id, data in X.groupby("model_id"):
-                X_ = data[["date", "yt"]]
-                y_ = data[["date", "yt"]]
+            for model_id, data in X.groupby(self.model_id_col):
+                X_ = data[[self.date_col, self.target_col]]
+                y_ = data[[self.date_col, self.target_col]]
                 self.models[model_id] = HoltWintersAtomic(
                     trend=self.trend,
                     damped_trend=self.damped_trend,
@@ -135,7 +144,7 @@ class HoltWintersPooled(BaseEstimator, RegressorMixin):
         return self
 
     def predict(self, X):
-        self.predicting_model_ids = X["model_id"].unique().tolist()
+        self.predicting_model_ids = X[self.model_id_col].unique().tolist()
         self.model_ids_in_fit_not_in_prediction = list(
             set(self.training_model_ids) - set(self.predicting_model_ids)
         )
@@ -153,23 +162,23 @@ class HoltWintersPooled(BaseEstimator, RegressorMixin):
                 ", ".join(map(str, self.model_ids_in_prediction_not_in_fit)),
             )
         preds = []
-        for model_id, data in X.groupby("model_id"):
+        for model_id, data in X.groupby(self.model_id_col):
             X_ = data
             pred = self.models[model_id].predict(X_)
-            pred["model_id"] = model_id
-            pred.index.name = "date"
+            pred[self.model_id_col] = model_id
+            pred.index.name = self.date_col
             preds.append(pred)
         return (
-            pd.concat(preds).reset_index().set_index(["model_id", "date"]).sort_index()
+            pd.concat(preds).reset_index().set_index([self.model_id_col, self.date_col]).sort_index()
         )
 
     def score(self, X, y, sample_weight=None):
-        pred_df = self.predict(X).join(y.set_index(["model_id", "date"]).sort_index())
+        pred_df = self.predict(X).join(y.set_index([self.model_id_col, self.date_col]).sort_index())
         return (
             np.mean(
                 np.abs(
-                    (pred_df["yt"].to_numpy() - pred_df["yt_hat"].to_numpy())
-                    / pred_df["yt"].to_numpy()
+                    (pred_df[self.target_col].to_numpy() - pred_df["yt_hat"].to_numpy())
+                    / pred_df[self.target_col].to_numpy()
                 )
             )
             * 100
