@@ -6,3 +6,18 @@ conda activate mlflow_sklearn_custom_model
 pip install -r requirements.txt
 conda deactivate
 ```
+
+
+## __Directory structure__
+
+```bash
+.
+├── config.py
+├── engine.py
+├── __init__.py
+├── README.md
+├── requirements.txt
+└── utils.py
+
+0 directories, 6 files
+```

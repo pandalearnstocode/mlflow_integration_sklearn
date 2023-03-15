@@ -6,3 +6,7 @@ pandas
 numpy
 statsmodels
 mlflow
+joblib
+cvxpy
+loguru
+black
