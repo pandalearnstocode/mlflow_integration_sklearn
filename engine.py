@@ -44,17 +44,19 @@ class LassoRegressor(BaseEstimator, RegressorMixin):
 
 class HoltWintersAtomic(BaseEstimator, RegressorMixin):
     def __init__(
-        self, trend=None, damped_trend=False, seasonal=None, seasonal_periods=None
+        self, trend=None, damped_trend=False, seasonal=None, seasonal_periods=None, date_col = "date",date_freq = "D"
     ):
         self.trend = trend
         self.damped_trend = damped_trend
         self.seasonal = seasonal
         self.seasonal_periods = seasonal_periods
         self.model_ = None
+        self.date_col = date_col
+        self.date_freq = date_freq
 
     def fit(self, X, y=None):
-        X = X.set_index("date")
-        X.index.freq = "MS"
+        X = X.set_index(self.date_col)
+        X.index.freq = self.date_freq
         X = X[["yt"]]
         self.model_ = ExponentialSmoothing(
             X,
@@ -66,11 +68,10 @@ class HoltWintersAtomic(BaseEstimator, RegressorMixin):
         return self
 
     def predict(self, X):
-        X = X.set_index("date")
-        X.index.freq = "MS"
-        df = self.model_.predict(start=X.index[0], end=X.index[-1]).to_frame()
-        df.columns = ["yt_hat"]
-        df.index.name = "date"
+        X = X.set_index(self.date_col)
+        X.index.freq = self.date_freq
+        df = self.model_.predict(start=X.index[0], end=X.index[-1]).to_frame(name = "yt_hat")
+        df.index.name = self.date_col
         return df
 
     def score(self, X, y):

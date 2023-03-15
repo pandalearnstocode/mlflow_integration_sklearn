@@ -26,14 +26,22 @@ def _synthetic_data_atomic(n = 1000, time_period = 30) -> pd.DataFrame:
     model.train_dataframe(
     df
     )
-    synthetic_df = model.generate_dataframe(n)
+    synthetic_df = model.generate_dataframe(time_period)
     df = synthetic_df.T
     df.columns = [f"x_{ix}" for ix in range(synthetic_df.shape[0])]
-    df['y'] = np.random.uniform(0,1, size = df.shape[0])
-    return synthetic_df
+    df['yt'] = np.random.uniform(0,1, size = df.shape[0])
+    df.index.name = "date"
+    return df
 
-def _synthetic_data_pooled() -> pd.DataFrame:
-    pass
+def _synthetic_data_pooled(n_models = 2, n = 1000, time_period = 30) -> pd.DataFrame:
+    dc = []
+    for ix in range(n_models):
+        df = _synthetic_data_atomic(n = n, time_period = time_period)
+        df[["model_id"]] = ix
+        dc.append(df)
+    df_ = pd.concat(dc)
+    df_.index.name = "date"
+    return df_
 
 def generate_synthetic_data(model_name: str = "lasso", synthetic_data_config: Dict = None) -> pd.DataFrame:
     if not synthetic_data_config:

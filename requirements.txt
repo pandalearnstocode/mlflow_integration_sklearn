@@ -4,7 +4,7 @@ notebook
 scikit-learn
 pandas
 numpy
-statsmodels
+statsmodels==0.13.2
 mlflow
 joblib
 cvxpy
