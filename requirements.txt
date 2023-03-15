@@ -10,3 +10,5 @@ joblib
 cvxpy
 loguru
 black
+torch
+gretel-synthetics

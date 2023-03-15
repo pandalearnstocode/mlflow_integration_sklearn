@@ -143,12 +143,12 @@ class HoltWintersPooled(BaseEstimator, RegressorMixin):
         )
         if self.model_ids_in_fit_not_in_prediction:
             logger.info(
-                "INFO: Model ids in fit but not in predict: ",
+                "Model ids in fit but not in predict: ",
                 ", ".join(map(str, self.model_ids_in_fit_not_in_prediction)),
             )
         if self.model_ids_in_prediction_not_in_fit:
-            logger.info(
-                "ERROR: Model ids in predict but not in fit: ",
+            logger.critical(
+                "Model ids in predict but not in fit: ",
                 ", ".join(map(str, self.model_ids_in_prediction_not_in_fit)),
             )
         preds = []
